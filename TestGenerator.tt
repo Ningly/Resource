@@ -1,0 +1,84 @@
+﻿<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ assembly name="$(SolutionDir)Gd.Bos.Core.Common\bin\Debug\Gd.Bos.Core.Common.dll" #>
+<#@ import namespace="Gd.Bos.Core.Common" #>
+<#@ output extension=".Generated.cs" #>
+<# var anchorType = typeof(Gd.Bos.Core.Common.Common.Data.AuthorizationTransaction); #>
+<# var derivedTypes = System.Reflection.Assembly
+                .GetAssembly(anchorType).GetTypes()
+                .Where(x => x.IsAbstract == false && x.IsClass && x.Namespace == anchorType.Namespace)
+                .ToList();
+#>
+using System;
+using System.Collections.Generic;
+using NUnit.Framework;
+using <#= anchorType.Namespace #>;    
+   
+namespace Tests.Common.Data
+{ 
+
+	<# foreach(var item in derivedTypes)
+	{#>
+	[TestFixture]
+		public class <#= $"{item.Name}Tests" #>
+		{
+			private <#= item.Name #> _target;
+
+			[SetUp]
+			public void SetUp()
+			{
+				_target = new <#= item.Name #>();
+			}
+
+			<# foreach(var propItem in item.GetProperties())
+			{#>
+[Test]
+			public void When_Property_<#= propItem.GetMethod.Name.Substring(4) #>_Success()
+			{
+
+				#region Arrange
+			<# var propType = propItem.GetMethod.ReturnType; #>
+			<# var isGenericType = propType.IsGenericType; #>
+			<# propType = (isGenericType && propType.GetGenericArguments()[0].IsValueType ? propType.GetGenericArguments()[0] : propType); #>
+			<# var propTypeName = (propType == typeof(String) ? "string" : propType.Name); #>
+			<# propTypeName = (propTypeName.StartsWith("List`") ? "List<" + propType.GetGenericArguments()[0] + ">" : propType.Name); #>
+			 
+
+			<# if(propType == typeof(String)) { #>
+	var expected = Guid.NewGuid().ToString("D");
+			<#} else if(propType == typeof(long)) { #>
+	var expected = DateTime.UtcNow.Ticks;
+			<#} else if(propType == typeof(bool)) { #>
+	var expected = true;
+			<#} else if(propType == typeof(System.Collections.Generic.Dictionary<string, object>)) { #>
+	var expected = new System.Collections.Generic.Dictionary<string, object>();
+			<#} else if(propType == typeof(System.Collections.Generic.Dictionary<string, string>)) { #>
+	var expected = new System.Collections.Generic.Dictionary<string, string>();
+			<#} else if(propType == typeof(Guid)) { #>
+	var expected = Guid.NewGuid();
+			<#} else { #>
+	var expected = default(<#= propTypeName #>);
+			<#} #>
+
+				#endregion
+
+				#region Act
+
+				_target.<#= propItem.GetMethod.Name.Substring(4) #> = expected;
+				var actual = _target.<#= propItem.GetMethod.Name.Substring(4) #>;
+
+				#endregion
+				
+				#region Assert
+
+				Assert.AreEqual(expected, actual);
+
+				#endregion
+			}
+			<#}#>
+		}
+	<#}#>
+}
